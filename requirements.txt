@@ -11,3 +11,5 @@ python-dotenv
 opencv-python 
 websockets
 python-multipart
+torch 
+torchvision

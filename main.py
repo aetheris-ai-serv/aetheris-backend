@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import cv2
 import numpy as np
 from ultralytics import YOLO
-import base64
 from fastapi.responses import JSONResponse
 import torch
 
