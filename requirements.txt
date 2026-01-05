@@ -8,3 +8,6 @@ matplotlib
 seaborn
 pymysql
 python-dotenv
+opencv-python 
+websockets
+python-multipart
