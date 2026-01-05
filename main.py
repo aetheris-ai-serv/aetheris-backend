@@ -159,6 +159,7 @@ async def receive_frame(file: UploadFile = File(...)):
 
         # OPTIONAL: Save image for debugging
         cv2.imwrite("received_frame.jpg", img)
+        
 
         return {"received": True}
 

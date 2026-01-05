@@ -13,3 +13,4 @@ websockets
 python-multipart
 torch 
 torchvision
+ultralytics
