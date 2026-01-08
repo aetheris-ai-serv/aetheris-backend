@@ -1,0 +1,35 @@
+# Virtual environment
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Python logs
+*.log
+
+# Environment variables
+.env
+
+# VSCode settings
+.vscode/
+
+# YOLO / AI model weights
+*.pt
+*.onnx
+*.h5
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Database files
+*.sqlite3
