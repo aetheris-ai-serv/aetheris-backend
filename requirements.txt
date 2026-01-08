@@ -8,8 +8,7 @@ pandas
 scikit-learn
 pymysql
 python-dotenv
-cvzone
-ultralytics == 8.0.134
-numpy == 1.24.3
-opencv-python-headless >= 4.5.1
-math
+cvzone>=1.6.6
+ultralytics==8.0.134
+numpy==1.24.3
+opencv-python-headless>=4.5.1
