@@ -1,3 +1,6 @@
+pip>=23.3
+setuptools>=68
+wheel
 fastapi
 pydantic
 uvicorn
@@ -23,8 +26,5 @@ tqdm >= 4.64.0
 filterpy >= 0.1.2
 scikit-image >= 0.18.1
 lapt >= 0.4.0
-opencv-python >= 4.5.1
+opencv-python-headless >= 4.5.1
 math
-pip>=23.3
-setuptools>=68
-wheel
