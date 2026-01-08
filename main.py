@@ -4,7 +4,9 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 from fastapi.responses import JSONResponse
-import torch
+from sort import Sort
+import cvzone as cvz
+import math
 
 app = FastAPI()
 
@@ -17,94 +19,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Fix PyTorch 2.6 weights_only warning
-import ultralytics.nn.tasks
-torch.serialization.add_safe_globals([ultralytics.nn.tasks.DetectionModel])
 
 # Load YOLO model
 print("🚀 Loading YOLO model...")
 model = YOLO('yolov8n.pt')  # Fastest model
 print("✅ YOLO model loaded!")
-
+#tracking
+tracker = Sort(max_age=20,min_hits=3,iou_threshold=0.3)
 # Vehicle classes in COCO dataset
-VEHICLE_CLASSES = {
+VEHICLE_CLASSES = [
     'car', 'motorcycle', 'bus', 'truck', 'bicycle', 'train'
-}
+]
 
+classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
+              "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
+              "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
+              "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat",
+              "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup",
+              "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
+              "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed",
+              "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell phone",
+              "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
+              "teddy bear", "hair drier", "toothbrush"
+              ]
 frame_count = 0
 
 @app.get("/")
 async def root():
     return {"message": "Vehicle Detection Server Running"}
 
-@app.post("/detect-vehicles")
-async def detect_vehicles(file: UploadFile = File(...)):
-    print("🔥 /detect-vehicles HIT")
-    global frame_count
-    frame_count += 1
-
-    try:
-        print(f"\n{'='*50}")
-        print(f"🔍 Processing frame #{frame_count}")
-
-        # Read image bytes
-        image_bytes = await file.read()
-        print(f"📦 Received bytes: {len(image_bytes)}")
-
-        # Decode image
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        if img is None:
-            return JSONResponse(
-                status_code=400,
-                content={"error": "Invalid image"}
-            )
-
-        print(f"📸 Image shape: {img.shape}")
-
-        # Run YOLO
-        results = model(img, conf=0.25, verbose=False)
-
-        vehicles = []
-        vehicle_types = {}
-
-        for result in results:
-            for box in result.boxes:
-                cls = int(box.cls[0])
-                class_name = model.names[cls]
-
-                if class_name in VEHICLE_CLASSES:
-                    conf = float(box.conf[0])
-                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-
-                    vehicles.append({
-                        "type": class_name,
-                        "confidence": round(conf, 2),
-                        "bbox": [int(x1), int(y1), int(x2), int(y2)]
-                    })
-
-                    vehicle_types[class_name] = vehicle_types.get(class_name, 0) + 1
-
-        print(f"✅ Vehicles detected: {len(vehicles)}")
-        print(f"📋 Vehicle types: {vehicle_types}")
-        print(f"{'='*50}")
-
-        return {
-            "status": "success",
-            "total_vehicles": len(vehicles),
-            "vehicle_types": vehicle_types,
-            "vehicles": vehicles,
-            "frame_number": frame_count
-        }
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JSONResponse(
-            status_code=500,
-            content={"error": str(e)}
-        )
+# @app.post("/detect-vehicles")
+# async def detect_vehicles(file: UploadFile = File(...)):
+    
 
 @app.post("/test-detection")
 async def test_detection():
@@ -150,17 +96,49 @@ async def receive_frame(file: UploadFile = File(...)):
 
         # Convert to OpenCV image
         np_arr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        cap = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        success, img = cap.read()
 
         if img is None:
             return {"error": "Invalid image"}
 
         print(f"📸 Frame received: {img.shape}")
+        counted_ids = set()  # define OUTSIDE while loop
 
-        # OPTIONAL: Save image for debugging
-        cv2.imwrite("received_frame.jpg", img)
+        while True:
+            results = model(img, stream=True)
+            detections = np.empty((0, 5))
         
+            for r in results:
+                boxes = r.boxes
+                for box in boxes:
+                    
+                    x1,y1,x2,y2 = box.xyxy[0]
+                    x1,y1,x2,y2 = int(x1),int(y1),int(x2),int(y2)      
 
+                    w,h = x2-x1, y2-y1
+                    cvz.cornerRect(img,(x1,y1,w,h))
+                    conf = math.ceil((box.conf[0]*100))/100
+                    
+                    #class names
+                    cls =int(box.cls[0])
+                    currentClass = classNames[cls]
+
+                    if currentClass in VEHICLE_CLASSES and conf > 0.3:
+                        cvz.putTextRect(img,f'{currentClass} {conf}',(max(0,x1),max(35,y1)),scale =0.6,thickness=1,offset=2)
+                        cvz.cornerRect(img,(x1,y1,w,h),l=9)
+                        currentArray = np.array([x1,y1,x2,y2,conf])
+                        detections = np.vstack((detections,currentArray))
+
+            resultsTracker = tracker.update(detections)
+            for result in resultsTracker:
+                x1,y1,x2,y2,id = result
+                x1,y1,x2,y2,id = int(x1),int(y1),int(x2),int(y2),int(id)
+                cvz.cornerRect(img,(x1,y1,x2-x1,y2-y1),l=9,rt=2,colorR=(255,0,0))
+                cvz.putTextRect(img,f'ID: {id}',(x1, y1-10),scale=1.5)
+
+            if id not in counted_ids:
+                counted_ids.add(id)
         return {"received": True}
 
     except Exception as e:
