@@ -96,13 +96,9 @@ async def root():
 @app.post("/frame")
 async def receive_frame(file: UploadFile = File(...)):
     try:
-        
-        
-
         if not DETECTION_ENABLED:
             return {"detection": "disabled"}
         
-        line_y = 400
 
         # Convert to OpenCV image
         image_bytes = await file.read()
@@ -117,7 +113,7 @@ async def receive_frame(file: UploadFile = File(...)):
 
         
         results = model(img, stream=True)
-        detections = np.empty((0, 5))
+        new_vehicles = 0
         
         for r in results:
             for box in r.boxes:
@@ -143,9 +139,6 @@ async def receive_frame(file: UploadFile = File(...)):
                             TOTAL_COUNT += 1
                             new_vehicles += 1
                             seen_centroids.append((cx, cy))
-
-            
-
         return {
             "frame_processed": True,
             "new_vehicles": new_vehicles,
