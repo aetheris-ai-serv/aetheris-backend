@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 from fastapi.responses import JSONResponse
-from sort import Sort
 import cvzone as cvz
 import math
 
@@ -24,12 +23,18 @@ app.add_middleware(
 print("🚀 Loading YOLO model...")
 model = YOLO('yolov8n.pt')  # Fastest model
 print("✅ YOLO model loaded!")
-#tracking
-tracker = Sort(max_age=20,min_hits=3,iou_threshold=0.3)
+
 # Vehicle classes in COCO dataset
 VEHICLE_CLASSES = [
     'car', 'motorbike', 'bus', 'truck', 'bicycle', 'train'
 ]
+DETECTION_ENABLED = False
+counted_ids = set()
+TOTAL_COUNT = 0
+seen_centroids = []
+LINE_Y = 10  # counting line position
+OFFSET = 2   
+DIST_THRESHOLD = 40
 
 classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
               "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
@@ -42,7 +47,6 @@ classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "trai
               "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
               "teddy bear", "hair drier", "toothbrush"
               ]
-frame_count = 0
 
 @app.get("/")
 async def root():
@@ -52,25 +56,24 @@ async def root():
 @app.post("/frame")
 async def receive_frame(file: UploadFile = File(...)):
     try:
-        global DETECTION_ENABLED, counted_ids
-        # Read image bytes
+        
         
 
         if not DETECTION_ENABLED:
             return {"detection": "disabled"}
         
+        line_y = 400
+
         # Convert to OpenCV image
         image_bytes = await file.read()
         np_arr = np.frombuffer(image_bytes, np.uint8)
-        cap = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        success, img = cap.read()
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        
 
         if img is None:
             return {"error": "Invalid image"}
 
         print(f"📸 Frame received: {img.shape}")
-        counted_ids = set()  # define OUTSIDE while loop
-        DETECTION_ENABLED = False
 
         
         results = model(img, stream=True)
@@ -81,28 +84,32 @@ async def receive_frame(file: UploadFile = File(...)):
                 x1,y1,x2,y2 = map(int, box.xyxy[0])
                 conf = float(box.conf[0])
                 cls = int(box.cls[0])
-                currentClass = classNames[cls]
+                class_name = model.names[cls]
 
-                if currentClass in VEHICLE_CLASSES and conf > 0.3:
-                    detections = np.vstack(
-                        (detections, [x1,y1,x2,y2,conf])
-                    )
+                if class_name in VEHICLE_CLASSES and conf > 0.3:
+                    cx = int((x1 + x2) / 2)
+                    cy = int((y1 + y2) / 2)
 
-        tracked = tracker.update(detections)
+                    # Check if centroid is near counting line
+                    if (LINE_Y - OFFSET) < cy < (LINE_Y + OFFSET):
 
-        frame_count = 0
-        for t in tracked:
-            _, _, _, _, track_id = t
-            track_id = int(track_id)
+                        is_new = True
+                        for (px, py) in seen_centroids:
+                            if math.hypot(cx - px, cy - py) < DIST_THRESHOLD:
+                                is_new = False
+                                break
 
-            if track_id not in counted_ids:
-                counted_ids.add(track_id)
-                frame_count += 1
+                        if is_new:
+                            TOTAL_COUNT += 1
+                            new_vehicles += 1
+                            seen_centroids.append((cx, cy))
+
+            
 
         return {
             "frame_processed": True,
-            "new_vehicles": frame_count,
-            "total_count": len(counted_ids)
+            "new_vehicles": new_vehicles,
+            "total_count": TOTAL_COUNT
         }
 
     except Exception as e:
