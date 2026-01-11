@@ -19,11 +19,11 @@ from __future__ import print_function
 
 import os
 import numpy as np
+import cv2
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from skimage import io
 
 import glob
 import time
@@ -304,7 +304,7 @@ if __name__ == '__main__':
 
         if(display):
           fn = os.path.join('mot_benchmark', phase, seq, 'img1', '%06d.jpg'%(frame))
-          im =io.imread(fn)
+          im = cv2.imread(fn)
           ax1.imshow(im)
           plt.title(seq + ' Tracked Targets')
 
