@@ -8,10 +8,13 @@ import math
 import torch
 import ultralytics.nn.tasks
 from ultralytics import YOLO
+from torch.nn.modules.container import Sequential
 
-torch.serialization.add_safe_globals(
-    [ultralytics.nn.tasks.DetectionModel]
-)
+
+torch.serialization.add_safe_globals([
+    ultralytics.nn.tasks.DetectionModel,
+    Sequential
+])
 
 app = FastAPI()
 
