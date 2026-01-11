@@ -75,6 +75,7 @@ seen_centroids = []
 LINE_Y = 10  # counting line position
 OFFSET = 2   
 DIST_THRESHOLD = 40
+new_vehicles = 0
 
 classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
               "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
@@ -96,7 +97,7 @@ async def root():
 @app.post("/frame")
 async def receive_frame(file: UploadFile = File(...)):
     try:
-        global TOTAL_COUNT, seen_centroids
+        global TOTAL_COUNT, seen_centroids,new_vehicles
         
         if not DETECTION_ENABLED:
             return {"detection": "disabled"}
@@ -115,7 +116,7 @@ async def receive_frame(file: UploadFile = File(...)):
 
         
         results = model(img, stream=True)
-        new_vehicles = 0
+        
         
         for r in results:
             for box in r.boxes:
