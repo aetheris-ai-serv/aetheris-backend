@@ -2,10 +2,16 @@ from fastapi import FastAPI,UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import cv2
 import numpy as np
-from ultralytics import YOLO
 from fastapi.responses import JSONResponse
 import cvzone as cvz
 import math
+import torch
+import ultralytics.nn.tasks
+from ultralytics import YOLO
+
+torch.serialization.add_safe_globals(
+    [ultralytics.nn.tasks.DetectionModel]
+)
 
 app = FastAPI()
 
