@@ -96,6 +96,8 @@ async def root():
 @app.post("/frame")
 async def receive_frame(file: UploadFile = File(...)):
     try:
+        global TOTAL_COUNT, seen_centroids
+        
         if not DETECTION_ENABLED:
             return {"detection": "disabled"}
         
