@@ -8,6 +8,7 @@ pandas
 scikit-learn
 pymysql
 python-dotenv
+python-multipart
 cvzone>=1.6.1
 ultralytics==8.0.134
 torch==2.5.1

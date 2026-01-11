@@ -9,7 +9,8 @@ import torch
 import ultralytics.nn.tasks
 from ultralytics import YOLO
 from torch.nn.modules.container import Sequential
-
+import time
+from pydantic import BaseModel
 
 torch.serialization.add_safe_globals([
     ultralytics.nn.tasks.DetectionModel,
@@ -17,6 +18,35 @@ torch.serialization.add_safe_globals([
 ])
 
 app = FastAPI()
+
+# ===================== DATA MODEL =====================
+class SpeedData(BaseModel):
+    speed_kmph: float
+    timestamp: float | None = None
+
+# ===================== STORAGE (IN-MEMORY) =====================
+latest_speed = {
+    "speed_kmph": 0.0,
+    "timestamp": None
+}
+
+@app.post("/speed")
+def receive_speed(data: SpeedData):
+    latest_speed["speed_kmph"] = data.speed_kmph
+    latest_speed["timestamp"] = data.timestamp or time.time()
+
+    print(f"🚗 Speed received: {data.speed_kmph:.2f} km/h")
+
+    return {
+        "status": "ok",
+        "speed_kmph": data.speed_kmph
+    }
+
+# ------------------------------------------------
+@app.get("/speed")
+def get_speed():
+    return latest_speed
+
 
 # Enable CORS
 app.add_middleware(
