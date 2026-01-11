@@ -2,8 +2,6 @@ from fastapi import FastAPI,UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import cv2
 import numpy as np
-from fastapi.responses import JSONResponse
-import cvzone as cvz
 import math
 import torch
 import ultralytics.nn.tasks
@@ -69,25 +67,11 @@ VEHICLE_CLASSES = [
     'car', 'motorbike', 'bus', 'truck', 'bicycle', 'train'
 ]
 DETECTION_ENABLED = False
-counted_ids = set()
 TOTAL_COUNT = 0
 seen_centroids = []
-LINE_Y = 10  # counting line position
-OFFSET = 2   
+LINE_X = 10  # counting line position 
 DIST_THRESHOLD = 40
-new_vehicles = 0
 
-classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
-              "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
-              "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
-              "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat",
-              "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup",
-              "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
-              "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed",
-              "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell phone",
-              "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
-              "teddy bear", "hair drier", "toothbrush"
-              ]
 
 @app.get("/")
 async def root():
@@ -97,8 +81,8 @@ async def root():
 @app.post("/frame")
 async def receive_frame(file: UploadFile = File(...)):
     try:
-        global TOTAL_COUNT, seen_centroids,new_vehicles
-        
+        global TOTAL_COUNT, seen_centroids
+        new_vehicles = 0
         if not DETECTION_ENABLED:
             return {"detection": "disabled"}
         
@@ -130,7 +114,7 @@ async def receive_frame(file: UploadFile = File(...)):
                     cy = int((y1 + y2) / 2)
 
                     # Check if centroid is near counting line
-                    if (LINE_Y - OFFSET) < cy < (LINE_Y + OFFSET):
+                    if (LINE_X ) < cx < (int(img.shape[1])) :
 
                         is_new = True
                         for (px, py) in seen_centroids:
@@ -142,6 +126,8 @@ async def receive_frame(file: UploadFile = File(...)):
                             TOTAL_COUNT += 1
                             new_vehicles += 1
                             seen_centroids.append((cx, cy))
+                            if len(seen_centroids) > 20:
+                                seen_centroids.pop(0)
         return {
             "frame_processed": True,
             "new_vehicles": new_vehicles,
