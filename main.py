@@ -11,6 +11,7 @@ from ultralytics import YOLO
 from torch.nn.modules.container import Sequential
 import time
 from pydantic import BaseModel
+import os
 
 torch.serialization.add_safe_globals([
     ultralytics.nn.tasks.DetectionModel,
@@ -189,4 +190,4 @@ if __name__ == "__main__":
         print(f"  - {vc}")
     print("="*50)
     
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
