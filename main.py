@@ -7,9 +7,12 @@ import torch
 import ultralytics.nn.tasks
 from ultralytics import YOLO
 from torch.nn.modules.container import Sequential
+import random
 import time
+import threading
 from pydantic import BaseModel
 import os
+lock = threading.Lock()
 
 torch.serialization.add_safe_globals([
     ultralytics.nn.tasks.DetectionModel,
@@ -68,10 +71,10 @@ VEHICLE_CLASSES = [
 ]
 DETECTION_ENABLED = False
 TOTAL_COUNT = 0
-seen_centroids = []
-LINE_X = 10  # counting line position 
-DIST_THRESHOLD = 40
-
+current_risk = 0.0
+current_alert = "Normal"
+last_frame_time = None
+counted_ids = set()
 
 @app.get("/")
 async def root():
@@ -81,8 +84,7 @@ async def root():
 @app.post("/frame")
 async def receive_frame(file: UploadFile = File(...)):
     try:
-        global TOTAL_COUNT, seen_centroids
-        new_vehicles = 0
+        global TOTAL_COUNT,current_risk, current_alert, last_frame_time
         if not DETECTION_ENABLED:
             return {"detection": "disabled"}
         
@@ -97,7 +99,7 @@ async def receive_frame(file: UploadFile = File(...)):
             return {"error": "Invalid image"}
 
         print(f"📸 Frame received: {img.shape}")
-
+        current_centroids = []
         
         results = model(img, stream=True)
         
@@ -110,27 +112,27 @@ async def receive_frame(file: UploadFile = File(...)):
                 class_name = model.names[cls]
 
                 if class_name in VEHICLE_CLASSES and conf > 0.3:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
                     cx = int((x1 + x2) / 2)
                     cy = int((y1 + y2) / 2)
 
-                    # Check if centroid is near counting line
-                    if (LINE_X ) < cx < (int(img.shape[1])) :
+                    current_centroids.append((cx, cy))
 
-                        is_new = True
-                        for (px, py) in seen_centroids:
-                            if math.hypot(cx - px, cy - py) < DIST_THRESHOLD:
-                                is_new = False
-                                break
+        with lock:
+            current_risk = len(current_centroids)
+            print(f"⚠️ Current Risk Level: {current_risk}")
 
-                        if is_new:
-                            TOTAL_COUNT += 1
-                            new_vehicles += 1
-                            seen_centroids.append((cx, cy))
-                            if len(seen_centroids) > 20:
-                                seen_centroids.pop(0)
+            if current_risk > 5:
+                current_alert = "HIGH RISK"
+            elif current_risk > 3 and current_risk <=5:
+                current_alert = "MEDIUM RISK"
+            else:
+                current_alert = "SAFE"
+
+            last_frame_time = time.time()
+
         return {
             "frame_processed": True,
-            "new_vehicles": new_vehicles,
             "total_count": TOTAL_COUNT
         }
 
@@ -158,6 +160,23 @@ async def debug(data: dict):
     print("🔥 DEBUG HIT")
     print(data.keys())
     return {"received": True}
+
+@app.get("/status")
+def get_status():
+    if not DETECTION_ENABLED:
+        return {
+            "running": False,
+            "risk": 0.0,
+            "alert": "Stopped"
+        }
+
+    return {
+        "running": True,
+        "risk": current_risk,
+        "alert": current_alert,
+        "last_frame_time": last_frame_time
+    }
+
 
 if __name__ == "__main__":
     import uvicorn
