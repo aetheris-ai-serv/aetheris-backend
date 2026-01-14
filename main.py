@@ -74,7 +74,6 @@ TOTAL_COUNT = 0
 current_risk = 0.0
 current_alert = "Normal"
 last_frame_time = None
-counted_ids = set()
 
 @app.get("/")
 async def root():
@@ -142,9 +141,8 @@ async def receive_frame(file: UploadFile = File(...)):
 
 @app.post("/start-detection")
 async def start_detection():
-    global DETECTION_ENABLED, counted_ids
+    global DETECTION_ENABLED
     DETECTION_ENABLED = True
-    counted_ids.clear()
     print("🟢 Detection STARTED")
     return {"status": "started"}
 
