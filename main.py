@@ -1,3 +1,4 @@
+from http.client import HTTPException
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import cv2
@@ -52,6 +53,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    max_age=3600,
 )
 
 # Load YOLO model
@@ -81,6 +83,21 @@ async def receive_frame(file: UploadFile = File(...)):
         
         if not DETECTION_ENABLED:
             return {"detection": "disabled"}
+
+        if not file:
+            raise HTTPException(status_code=422, detail="No file provided")
+        if not file.content_type or not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=422, detail="File must be an image")
+
+        # Convert to OpenCV image
+        image_bytes = await file.read()
+        
+        # ⚠️ CHECK FILE SIZE (max 5MB)
+        if len(image_bytes) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=422, detail="Image too large (max 5MB)")
+        
+        if len(image_bytes) == 0:
+            raise HTTPException(status_code=422, detail="Empty file")
 
         # Convert to OpenCV image
         image_bytes = await file.read()
