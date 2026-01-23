@@ -174,21 +174,3 @@ def get_status():
         "vehicle_count": current_vehicle_count,
         "last_frame_time": last_frame_time
     }
-
-if __name__ == "__main__":
-    import uvicorn
-    print("=" * 50)
-    print("🚗 Vehicle Detection Server")
-    print("=" * 50)
-    print("📡 Endpoints:")
-    print("  - POST /frame (receive camera frames)")
-    print("  - GET  /status (get traffic status)")
-    print("  - POST /start-detection")
-    print("  - POST /stop-detection")
-    print("=" * 50)
-    print("\nDetectable vehicle classes:")
-    for vc in VEHICLE_CLASSES:
-        print(f"  - {vc}")
-    print("=" * 50)
-    
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
