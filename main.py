@@ -132,7 +132,8 @@ async def receive_frame(file: UploadFile = File(...)):
         return {
             "frame_processed": True,
             "vehicle_count": vehicle_count,
-            "traffic_level": current_traffic_level
+            "traffic_level": current_traffic_level,
+            "traffic_status": current_traffic_status  # ✅ Add this
         }
 
     except Exception as e:
