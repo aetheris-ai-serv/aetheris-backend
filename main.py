@@ -57,6 +57,7 @@ app.add_middleware(
 # Load YOLO model
 print("🚀 Loading YOLO model...")
 model = YOLO('yolov8n.pt')
+model.fuse()
 print("✅ YOLO model loaded!")
 
 # Vehicle classes in COCO dataset
@@ -86,7 +87,7 @@ async def receive_frame(file: UploadFile = File(...)):
         image_bytes = await file.read()
         np_arr = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
+        img = cv2.resize(img, (320, 240))  # Smaller = faster
         if img is None:
             return {"error": "Invalid image"}
 
